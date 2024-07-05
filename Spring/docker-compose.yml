@@ -5,12 +5,22 @@ services:
     image: mysql:5.7
     container_name: mysql
     environment:
-      - MYSQL_DATABASE=mydatabase   
-
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: mydatabase
+    ports:
+      - 3306:3306
   springapp:
     build: .
     container_name: springapp
     depends_on:
-      - db
+      db:
+        condition: service_started
+        
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/mydatabase?useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/mydatabase?useSSL=false
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+
+    ports:
+      - 8089:8089
+
