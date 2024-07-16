@@ -6,10 +6,12 @@ RUN mvn dependency:go-offline
 COPY . .
 RUN mvn install -DskipTests  -e -X 
 
+
 # Use an OpenJDK image to run the application
-FROM openjdk:11-jre-slim
+FROM openjdk:11-jre-slim AS app
 WORKDIR /app
 COPY --from=builder /app/target/*.jar /app/app.jar
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+
 
 
