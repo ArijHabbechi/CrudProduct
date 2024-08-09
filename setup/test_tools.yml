@@ -1,0 +1,32 @@
+---
+- hosts: jenkins
+  become: yes
+
+  tasks:
+    - name: Check if pre-push hook already exists
+      stat:
+        path: /home/jenkins/CrudProduct/.git/hooks/pre-push
+      register: pre_push_hook
+
+    - name: Install Talisman if no pre-push hook exists
+      shell: |
+        cd /home/jenkins/CrudProduct
+        ~/install-talisman.sh
+      when: not pre_push_hook.stat.exists
+
+    - name: Warn if pre-push hook already exists
+      debug:
+        msg: "Talisman installation skipped because a pre-push hook already exists."
+      when: pre_push_hook.stat.exists
+
+    - name: Run SonarQube Docker container
+      docker_container:
+        name: sonarqube
+        image: sonarqube:latest
+        state: started
+        restart_policy: always
+        ports:
+          - "9000:9000"
+        env:
+          SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+

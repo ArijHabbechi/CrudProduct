@@ -1,0 +1,164 @@
+---
+- hosts: jenkins
+  become: yes
+  vars:
+    jenkins_url: "http://192.168.116.134:8080"
+    jenkins_user: "admin"
+
+  tasks:
+    - name: Update package list
+      apt:
+        update_cache: yes
+
+    - name: Install required packages
+      apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - software-properties-common
+        - gnupg
+        - software-properties-common
+
+    - name: Download Jenkins repository key
+      get_url:
+        url: https://pkg.jenkins.io/debian/jenkins.io-2023.key
+        dest: /usr/share/keyrings/jenkins-keyring.asc
+
+    - name: Add Jenkins repository
+      apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian binary/"
+        state: present
+
+    - name: Update package list after adding Jenkins repository
+      apt:
+        update_cache: yes
+
+    - name: Install Jenkins
+      apt:
+        name: jenkins
+        state: present
+
+    - name: Start and enable Jenkins
+      systemd:
+        name: jenkins
+        state: started
+        enabled: yes
+
+    - name: Allow Jenkins through UFW
+      ufw:
+        rule: allow
+        port: 8080
+        proto: tcp
+
+    - name: Create directory for Docker's GPG key
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Download Docker's official GPG key
+      get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+
+    - name: Add Docker repository to Apt sources
+      copy:
+        content: |
+          deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable
+        dest: /etc/apt/sources.list.d/docker.list
+        mode: "0644"
+
+    - name: Update the apt package index after adding Docker repository
+      apt:
+        update_cache: yes
+
+    - name: Install Docker and related packages
+      apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: true
+      loop:
+        - docker-ce
+        - docker-ce-cli
+        - containerd.io
+        - docker-buildx-plugin
+        - docker-compose-plugin
+
+    - name: Add Docker group
+      group:
+        name: docker
+        state: present
+
+    - name: Add Jenkins user to Docker group
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
+
+    - name: Enable and start Docker services
+      systemd:
+        name: "{{ item }}"
+        enabled: true
+        state: started
+      loop:
+        - docker.service
+        - containerd.service
+
+    - name: Retrieve Jenkins initial admin password
+      command: cat /var/lib/jenkins/secrets/initialAdminPassword
+      register: initial_admin_password
+
+    - name: Install necessary Jenkins plugins
+      jenkins_plugin:
+        name: "{{ item.name }}"
+        version: "{{ item.version }}"
+        state: present
+        url: "{{ jenkins_url }}"
+        url_username: "{{ jenkins_user }}"
+        url_password: "{{ initial_admin_password.stdout }}"
+      loop:
+        - { name: performance, version: "3.18" }
+        - { name: dependency-check-jenkins-plugin, version: "5.1.1" }
+        - { name: blueocean, version: "1.24.7" }
+        - { name: jacoco, version: "3.2.0" }
+        - { name: sonar, version: "2.13.1" }
+        - { name: pitmutation, version: "1.0-18" }
+        - { name: kubernetes-cli, version: "1.10.2" }
+        - { name: docker-commons, version: "1.14" }
+        - { name: kubernetes-credentials, version: "0.9.0" }
+        - { name: authentication-tokens, version: "1.3" }
+        - { name: blueocean-pipeline-api-impl, version: "1.24.7" }
+        - { name: blueocean-core-js, version: "1.24.7" }
+        - { name: blueocean-autofavorite, version: "1.2.4" }
+        - { name: blueocean-i18n, version: "1.24.7" }
+        - { name: blueocean-web, version: "1.24.7" }
+        - { name: blueocean-dashboard, version: "1.24.7" }
+        - { name: blueocean-config, version: "1.24.7" }
+        - { name: jenkins-design-language, version: "1.24.7" }
+        - { name: blueocean-github-pipeline, version: "1.24.7" }
+        - { name: blueocean-git-pipeline, version: "1.24.7" }
+        - { name: blueocean-display-url, version: "2.4.1" }
+        - { name: blueocean-events, version: "1.24.7" }
+        - { name: blueocean-jwt, version: "1.24.7" }
+        - { name: blueocean-rest-impl, version: "1.24.7" }
+        - { name: blueocean-rest, version: "1.24.7" }
+        - { name: blueocean-commons, version: "1.24.7" }
+        - { name: blueocean-pipeline-editor, version: "1.24.7" }
+        - { name: blueocean-bitbucket-pipeline, version: "1.24.7" }
+        - { name: blueocean-personalization, version: "1.24.7" }
+        - { name: docker-workflow, version: "580.vc0c340686b_54" }
+        - { name: htmlpublisher, version: "1.36" }
+        - { name: slack, version: "734.v7f9ec8b_66975" }
+      notify:
+        - Restart Jenkins
+
+  handlers:
+    - name: Restart Jenkins
+      systemd:
+        name: jenkins
+        state: restarted
+
