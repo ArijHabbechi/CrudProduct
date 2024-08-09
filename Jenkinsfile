@@ -1,10 +1,10 @@
 pipeline {
     agent any
+
     tools {
-        nodejs '20.15.0'    
+        maven '3.9.8'
     }
-    
-    
+
     stages {
         stage('Checkout Git') {
             steps {
@@ -12,14 +12,45 @@ pipeline {
                 git credentialsId: 'jenkins-personnal-token', url: 'https://github.com/ArijHabbechi/CrudProduct.git'
             }
         }
-        stage('Build and Test Angular') {
+        
+        stage('Start Database') {
             steps {
-                dir('Angular') {
-                    script {
-                        sh 'npm install --force'
-                        sh 'npm run build'
-                    }
+                script {
+                    sh 'docker run --name mysql-test -e MYSQL_ROOT_PASSWORD=rootpassword -e MYSQL_DATABASE=mydatabase -e MYSQL_USER=jenkins -e MYSQL_PASSWORD=rootpassword -p 3306:3306 -d mysql:5.7'
                 }
+            }
+        }
+
+        stage('Build Artifact') {
+            steps {
+                dir('Spring') {
+                    sh "mvn clean package"
+                    archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
+                }
+            }
+        }
+        
+        stage('Test Maven – JUnit') {
+            steps {
+                dir('Spring') {
+                    sh "mvn test"
+                    sh "mvn surefire-report:report" 
+                }
+            }
+            post {
+                always {
+                    junit 'Spring/target/surefire-reports/*.xml'  
+                    archiveArtifacts artifacts: 'Spring/target/site/surefire-report.html', allowEmptyArchive: true
+                }
+            }
+        }
+
+    }
+
+    post {
+        always {
+            script {
+                sh 'docker stop mysql-test && docker rm mysql-test'
             }
         }
     }
