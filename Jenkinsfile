@@ -45,6 +45,23 @@ pipeline {
             }
         }
 
+        stage('SonarQube test – SAST') {
+            steps {
+                withCredentials([string(credentialsId: 'Jenkins-auth', variable: 'SONAR_TOKEN')]) { {
+                    dir('Spring') {
+                        sh "mvn clean verify sonar:sonar \
+                            -Dsonar.projectKey=SpringBootApp \
+                            -Dsonar.projectName='SpringBootApp' \
+                            -Dsonar.host.url=http://192.168.116.134:9000 \
+                            -Dsonar.token=${SONAR_TOKEN}"
+                    }
+                }
+
+            }
+        }
+
+
+
     }
 
     post {
