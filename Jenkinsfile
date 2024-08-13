@@ -12,7 +12,7 @@ pipeline {
                 git credentialsId: 'jenkins-personnal-token', url: 'https://github.com/ArijHabbechi/CrudProduct.git'
             }
         }
-        
+
         stage('Start Database') {
             steps {
                 script {
@@ -29,17 +29,17 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Test Maven – JUnit') {
             steps {
                 dir('Spring') {
                     sh "mvn test"
-                    sh "mvn surefire-report:report" 
+                    sh "mvn surefire-report:report"
                 }
             }
             post {
                 always {
-                    junit 'Spring/target/surefire-reports/*.xml'  
+                    junit 'Spring/target/surefire-reports/*.xml'
                     archiveArtifacts artifacts: 'Spring/target/site/surefire-report.html', allowEmptyArchive: true
                 }
             }
@@ -47,21 +47,26 @@ pipeline {
 
         stage('SonarQube test – SAST') {
             steps {
-                withCredentials([string(credentialsId: 'Jenkins-auth', variable: 'SONAR_TOKEN')]) { 
+                withCredentials([string(credentialsId: 'Jenkins-auth', variable: 'SONAR_TOKEN')]) {
                     dir('Spring') {
-                        sh "mvn clean verify sonar:sonar \
-                            -Dsonar.projectKey=SpringBootApp \
-                            -Dsonar.projectName='SpringBootApp' \
-                            -Dsonar.host.url=http://192.168.116.134:9000 \
-                            -Dsonar.token=${SONAR_TOKEN}"
+                        withSonarQubeEnv('SonarQube') {
+                            sh """
+                                mvn clean verify sonar:sonar \
+                                -Dsonar.projectKey=SpringBootApp \
+                                -Dsonar.projectName='SpringBootApp' \
+                                -Dsonar.host.url=http://192.168.116.134:9000 \
+                                -Dsonar.token=${SONAR_TOKEN}
+                            """
+                        }
+                        timeout(time: 2, unit: 'MINUTES') {
+                            script {
+                                waitForQualityGate abortPipeline: true
+                            }
+                        }
                     }
                 }
-
             }
         }
-
-
-
     }
 
     post {
@@ -72,4 +77,3 @@ pipeline {
         }
     }
 }
-
