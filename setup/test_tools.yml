@@ -3,6 +3,16 @@
   become: yes
 
   tasks:
+    - name: Ensure pip is installed
+      apt:
+        name: python3-pip
+        state: present
+
+    - name: Install Docker SDK for Python
+      pip:
+        name: docker
+        state: present
+
     - name: Check if pre-push hook already exists
       stat:
         path: /home/jenkins/CrudProduct/.git/hooks/pre-push
@@ -30,3 +40,32 @@
         env:
           SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
 
+    - name: Create OWASP ZAP scan script
+      copy:
+        dest: /home/{{ ansible_user }}/CrudProduct/zap_scan.sh
+        content: |
+          #!/bin/bash
+
+          # Grant full permissions to the current directory
+          chmod 777 $(pwd)
+
+          # Run the OWASP ZAP Docker container to scan the specified API
+          docker run -u root -v $(pwd):/zap/wrk/:rw -t zaproxy/zap-stable zap-api-scan.py \
+              -t http://{{ ansible_default_ipv4.address }}:8089/SpringMVC/v3/api-docs \
+              -f openapi \
+              -r zap_report.html
+
+          # Capture the exit code of the last command
+          exit_code=$?
+
+          # Output the exit code
+          echo "Exit Code : $exit_code"
+
+          # Check if there was a risk detected based on the exit code
+          if [[ $exit_code -ne 0 ]]; then
+              echo "OWASP ZAP Report has either Low/Medium/High Risk. Please check the HTML Report"
+              exit 1
+          else
+              echo "OWASP ZAP did not report any Risk"
+          fi
+      mode: '0755'  # Makes the script executable
