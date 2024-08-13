@@ -68,4 +68,4 @@
           else
               echo "OWASP ZAP did not report any Risk"
           fi
-      mode: '0755'  # Makes the script executable
+        mode: '0755'  # Makes the script executable
