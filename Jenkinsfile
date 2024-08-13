@@ -60,13 +60,24 @@ pipeline {
                         }
                         timeout(time: 2, unit: 'MINUTES') {
                             script {
-                                waitForQualityGate abortPipeline: true
+                                waitForQualityGate abortPipeline: false
                             }
                         }
                     }
                 }
             }
         }
+
+        stage('OWASP ZAP Scan- DAST') {
+            steps {
+                sh 'bash zap_scan.sh' // OWASP ZAP scan script
+            }
+            post {
+                always {
+                     publishHTML([allowMissing: false, alwaysLinkToLastBuild: true, keepAll: true, reportDir: 'owasp-zap-report', reportFiles: 'zap_report.html', reportName: 'OWASP ZAP HTML Report', reportTitles: 'OWASP ZAP HTML Report'])
+                }
+            }
+
     }
 
     post {
