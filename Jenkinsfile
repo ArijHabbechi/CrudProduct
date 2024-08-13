@@ -47,7 +47,7 @@ pipeline {
 
         stage('SonarQube test – SAST') {
             steps {
-                withCredentials([string(credentialsId: 'Jenkins-auth', variable: 'SONAR_TOKEN')]) { {
+                withCredentials([string(credentialsId: 'Jenkins-auth', variable: 'SONAR_TOKEN')]) { 
                     dir('Spring') {
                         sh "mvn clean verify sonar:sonar \
                             -Dsonar.projectKey=SpringBootApp \
