@@ -9,7 +9,7 @@ pipeline {
         stage('Checkout Git') {
             steps {
                 echo 'Pulling From Git'
-                git credentialsId: 'jenkins-personnal-token', url: 'https://github.com/ArijHabbechi/CrudProduct.git'
+                git branch: 'main', credentialsId: 'jenkins-personnal-token', url: 'https://github.com/ArijHabbechi/CrudProduct.git'
             }
         }
 
