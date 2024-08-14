@@ -74,7 +74,7 @@ pipeline {
             }
             post {
                 always {
-                     publishHTML([allowMissing: false, alwaysLinkToLastBuild: true, keepAll: true, reportDir: 'owasp-zap-report', reportFiles: 'zap_report.html', reportName: 'OWASP ZAP HTML Report', reportTitles: 'OWASP ZAP HTML Report'])
+                     publishHTML([allowMissing: false, alwaysLinkToLastBuild: true, keepAll: true, reportFiles: 'zap_report.html', reportName: 'OWASP ZAP HTML Report', reportTitles: 'OWASP ZAP HTML Report'])
                 }
             }
         }
@@ -86,6 +86,8 @@ pipeline {
             script {
                 sh 'docker stop mysql-test && docker rm mysql-test'
             }
+            publishChecks name: 'Tests', summary: 'Test results', detailsURL: env.BUILD_URL
+
         }
     }
 }
