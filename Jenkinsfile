@@ -74,7 +74,7 @@ pipeline {
             }
             post {
                 always {
-                     publishHTML([allowMissing: false, alwaysLinkToLastBuild: true, keepAll: true, reportFiles: 'zap_report.html', reportName: 'OWASP ZAP HTML Report', reportTitles: 'OWASP ZAP HTML Report'])
+                     publishHTML([allowMissing: false, alwaysLinkToLastBuild: true, keepAll: true, reportDir: '.', reportFiles: 'zap_report.html', reportName: 'OWASP ZAP HTML Report', reportTitles: 'OWASP ZAP HTML Report'])
                 }
             }
         }
