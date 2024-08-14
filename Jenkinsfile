@@ -70,7 +70,9 @@ pipeline {
 
         stage('OWASP ZAP Scan- DAST') {
             steps {
-                sh 'bash zap_scan.sh' // OWASP ZAP scan script
+                dir ("Spring") {
+                    sh 'bash zap_scan.sh' // OWASP ZAP scan script
+                }
             }
             post {
                 always {
