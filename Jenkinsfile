@@ -67,6 +67,23 @@ pipeline {
                 }
             }
         }
+        stage ('Remove Test Database') {
+            steps {
+                script {
+                    sh 'docker stop mysql-test && docker rm mysql-test'
+                }
+            }
+        }
+
+
+
+        stage('BUILD Docker Image') {
+            steps {
+                dir('Spring') {
+                    sh 'docker compose up -d'
+                }
+            } 
+        }
 
         stage('OWASP ZAP Scan- DAST') {
             steps {
@@ -80,12 +97,10 @@ pipeline {
         }
 
     }
-
+    
     post {
         always {
-            script {
-                sh 'docker stop mysql-test && docker rm mysql-test'
-            }
+
             publishChecks name: 'Tests', summary: 'Test results', detailsURL: env.BUILD_URL
 
         }
