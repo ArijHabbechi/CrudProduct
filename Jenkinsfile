@@ -67,6 +67,20 @@ pipeline {
                 }
             }
         }
+        
+        stage('Vulnerability tests') {
+            steps {
+                dir('Spring') { 
+                    sh "mvn dependency-check:check"
+                }
+            }
+            post {
+                always {
+                    dependencyCheckPublisher pattern: 'Spring/target/dependency-check-report.xml'
+                }
+            }
+        }
+
         stage ('Remove Test Database') {
             steps {
                 script {
@@ -97,10 +111,9 @@ pipeline {
         }
 
     }
-    
+
     post {
         always {
-
             publishChecks name: 'Tests', summary: 'Test results', detailsURL: env.BUILD_URL
 
         }
