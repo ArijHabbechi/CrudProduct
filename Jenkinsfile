@@ -101,10 +101,10 @@ stage('Build and Push Docker Image') {
             script {
                 withCredentials([string(credentialsId: 'jenkins-docker-auth', variable: 'DOCKERHUB_TOKEN')]) {
                     // Tag the Docker image
-                    sh 'docker tag springboot-app:latest arijhabbechi/springboot-app:latest'
+                    sh 'docker tag spring-springapp:latest arijhabbechi/spring-springapp:latest'
                     
                     // Push the Docker image to Docker Hub
-                    sh 'docker push arijhabbechi/springboot-app:latest'
+                    sh 'docker push arijhabbechi/spring-springapp:latest'
                 }
             }
         }
