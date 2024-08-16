@@ -91,24 +91,28 @@ pipeline {
 
 
 
-        stage('BUILD Docker Image') {
-            steps {
-                dir('Spring') {
-                    sh 'docker compose up -d'
-                }
-            } 
-        }
+stage('Build and Push Docker Image') {
+    steps {
+        dir('Spring') {
+            // Build the Docker image using Docker Compose
+            sh 'docker compose up -d --build'
 
-        stage('OWASP ZAP Scan- DAST') {
-            steps {
-                    sh 'bash zap_scan.sh' // OWASP ZAP scan script
-            }
-            post {
-                always {
-                     publishHTML([allowMissing: false, alwaysLinkToLastBuild: true, keepAll: true, reportDir: '.', reportFiles: 'zap_report.html', reportName: 'OWASP ZAP HTML Report', reportTitles: 'OWASP ZAP HTML Report'])
+            // Push the Docker image to Docker Hub
+            script {
+                withCredentials([string(credentialsId: 'jenkins-docker-auth', variable: 'DOCKERHUB_TOKEN')]) {
+                    // Tag the Docker image
+                    sh 'docker tag springboot-app:latest arijhabbechi/springboot-app:latest'
+                    
+                    // Push the Docker image to Docker Hub
+                    sh 'docker push arijhabbechi/springboot-app:latest'
                 }
             }
         }
+    }
+}
+
+
+
 
     }
 
