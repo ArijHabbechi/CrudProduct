@@ -1,9 +1,9 @@
 ---
 - hosts: minikube
-  become: yes
+  become: yes  # Elevated privileges required for setup
   vars:
     minikube_version: "v1.30.1"
-    zabbix_version: "6.0"
+    helm_version: "v3.7.0"
     minikube_user: "minikube"
 
   tasks:
@@ -80,7 +80,6 @@
         mode: '0755'
 
     - name: Start Minikube
-      become: false
       command: minikube start --driver=docker
 
     - name: Create directory for Kubernetes GPG key
@@ -119,7 +118,7 @@
 
     - name: Install Helm
       get_url:
-        url: "https://get.helm.sh/helm-v3.7.0-linux-amd64.tar.gz"
+        url: "https://get.helm.sh/helm-{{ helm_version }}-linux-amd64.tar.gz"
         dest: /tmp/helm.tar.gz
         mode: '0644'
 
@@ -128,24 +127,6 @@
         src: /tmp/helm.tar.gz
         dest: /tmp
         remote_src: yes
-    
+
     - name: Move Helm binary to /usr/local/bin
       command: mv /tmp/linux-amd64/helm /usr/local/bin/helm
-      
-    - name: Deploy Zabbix server using Helm
-      shell: |
-        minikube kubectl -- create namespace zabbix
-        helm repo add zabbix https://zabbix.github.io/zabbix-helm/
-        helm repo update
-        helm install zabbix-server zabbix/zabbix --namespace zabbix --set zabbixServer.image.tag={{ zabbix_version }}
-
-    - name: Wait for Zabbix Server deployment to complete
-      shell: "kubectl wait --namespace zabbix --for=condition=available --timeout=600s deployment/zabbix-server"
-
-    - name: Display Zabbix web UI access information
-      shell: minikube service zabbix-server --url
-      register: zabbix_url_output
-
-    - name: Show Zabbix access URL
-      debug:
-        msg: "{{ zabbix_url_output.stdout }}"
