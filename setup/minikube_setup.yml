@@ -9,9 +9,10 @@
     - name: Ensure basic packages are installed
       apt:
         name:
-          - curl
           - apt-transport-https
           - ca-certificates
+          - curl
+          - gnupg
           - software-properties-common
         state: present
         update_cache: yes
@@ -78,12 +79,42 @@
         mode: '0755'
 
     - name: Start Minikube
+      become: false 
       command: minikube start --driver=docker
+
+    - name: Create directory for Kubernetes GPG key
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Download Kubernetes public signing key
+      shell: |
+        curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+      args:
+        creates: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+    - name: Set permissions for Kubernetes GPG key
+      file:
+        path: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+        mode: "0644"
+
+    - name: Add Kubernetes apt repository
+      copy:
+        content: |
+          deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /
+        dest: /etc/apt/sources.list.d/kubernetes.list
+        mode: "0644"
+
+    - name: Update apt package index
+      apt:
+        update_cache: yes
 
     - name: Install kubectl
       apt:
         name: kubectl
         state: present
+        update_cache: yes
 
     - name: Deploy Zabbix server using Helm
       shell: |
