@@ -1,0 +1,104 @@
+---
+- hosts: minikube
+  become: yes
+  vars:
+    minikube_version: "v1.30.1"
+    zabbix_version: "6.0"
+
+  tasks:
+    - name: Ensure basic packages are installed
+      apt:
+        name:
+          - curl
+          - apt-transport-https
+          - ca-certificates
+          - software-properties-common
+        state: present
+        update_cache: yes
+
+    - name: Create directory for Docker's GPG key
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Download Docker's official GPG key
+      get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+
+    - name: Add Docker repository to Apt sources
+      copy:
+        content: |
+          deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable
+        dest: /etc/apt/sources.list.d/docker.list
+        mode: "0644"
+
+    - name: Update the apt package index after adding Docker repository
+      apt:
+        update_cache: yes
+
+    - name: Install Docker and related packages
+      apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: true
+      loop:
+        - docker-ce
+        - docker-ce-cli
+        - containerd.io
+        - docker-buildx-plugin
+        - docker-compose-plugin
+
+    - name: Add Docker group
+      group:
+        name: docker
+        state: present
+
+    - name: Add Minikube user to Docker group
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
+
+    - name: Enable and start Docker services
+      systemd:
+        name: "{{ item }}"
+        enabled: true
+        state: started
+      loop:
+        - docker.service
+        - containerd.service
+
+    - name: Install Minikube
+      get_url:
+        url: "https://storage.googleapis.com/minikube/releases/{{ minikube_version }}/minikube-linux-amd64"
+        dest: /usr/local/bin/minikube
+        mode: '0755'
+
+    - name: Start Minikube
+      command: minikube start --driver=docker
+
+    - name: Install kubectl
+      apt:
+        name: kubectl
+        state: present
+
+    - name: Deploy Zabbix server using Helm
+      shell: |
+        minikube kubectl -- create namespace zabbix
+        helm repo add zabbix https://zabbix.github.io/zabbix-helm/
+        helm repo update
+        helm install zabbix-server zabbix/zabbix --namespace zabbix --set zabbixServer.image.tag={{ zabbix_version }}
+
+    - name: Wait for Zabbix Server deployment to complete
+      shell: "kubectl wait --namespace zabbix --for=condition=available --timeout=600s deployment/zabbix-server"
+
+    - name: Display Zabbix web UI access information
+      shell: minikube service zabbix-server --url
+      register: zabbix_url_output
+
+    - name: Show Zabbix access URL
+      debug:
+        msg: "{{ zabbix_url_output.stdout }}"
