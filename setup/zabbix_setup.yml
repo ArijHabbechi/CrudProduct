@@ -1,0 +1,24 @@
+---
+- hosts: minikube
+  become: false  # No root privileges required
+  vars:
+    zabbix_version: "6.0"
+
+  tasks:
+    - name: Deploy Zabbix server using Helm
+      shell: |
+        kubectl create namespace zabbix
+        helm repo add zabbix https://zabbix.github.io/zabbix-helm/
+        helm repo update
+        helm install zabbix-server zabbix/zabbix --namespace zabbix --set zabbixServer.image.tag={{ zabbix_version }}
+
+    - name: Wait for Zabbix Server deployment to complete
+      shell: "kubectl wait --namespace zabbix --for=condition=available --timeout=600s deployment/zabbix-server"
+
+    - name: Display Zabbix web UI access information
+      shell: minikube service zabbix-server --url
+      register: zabbix_url_output
+
+    - name: Show Zabbix access URL
+      debug:
+        msg: "{{ zabbix_url_output.stdout }}"
