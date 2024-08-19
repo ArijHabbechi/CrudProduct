@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: springapp
+spec:
+  selector:
+    matchLabels:
+      app: springapp
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: springapp
+    spec:
+      containers:
+      - name: springapp
+        image: arijhabbechi/spring-springapp:latest
+        ports:
+        - containerPort: 8089
+        envFrom:
+        - configMapRef:
+            name: springapp-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: springapp
+spec:
+  selector:
+    app: springapp
+  ports:
+  - protocol: TCP
+    port: 8089
+    targetPort: 8089
+  type: NodePort
