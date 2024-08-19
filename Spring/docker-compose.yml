@@ -25,6 +25,7 @@ services:
 
   springapp:
     build: .
+    image: spring-springapp:latest
     container_name: springapp
     restart: always
     depends_on:
