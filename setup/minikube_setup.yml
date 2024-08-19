@@ -80,6 +80,7 @@
         mode: '0755'
 
     - name: Start Minikube
+      become: false
       command: minikube start --driver=docker
 
     - name: Create directory for Kubernetes GPG key
