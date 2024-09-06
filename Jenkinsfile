@@ -81,7 +81,7 @@ pipeline {
             }
         }
 
-        stage ('Remove Test Database') {
+        stage('Remove Test Database') {
             steps {
                 script {
                     sh 'docker stop mysql-test && docker rm mysql-test'
@@ -89,37 +89,66 @@ pipeline {
             }
         }
 
-
-
-stage('Build and Push Docker Image') {
-    steps {
-        dir('Spring') {
-            // Build the Docker image using Docker Compose
-            sh 'docker compose up -d --build'
-
-            // Push the Docker image to Docker Hub
-            script {
-                withCredentials([string(credentialsId: 'jenkins-docker-auth', variable: 'DOCKERHUB_TOKEN')]) {
-                    // Tag the Docker image
-                    sh 'docker tag spring-springapp:latest arijhabbechi/spring-springapp:latest'
-                    
-                    // Push the Docker image to Docker Hub
-                    sh 'docker push arijhabbechi/spring-springapp:latest'
+        stage('Run Trivy Scan') {
+            steps {
+                script {
+                    // Run the custom Trivy scan script
+                    sh './trivy-scan.sh'
                 }
             }
         }
-    }
-}
 
+        stage('Archive Reports') {
+            steps {
+                // Archive the reports in Jenkins
+                archiveArtifacts artifacts: "*-trivy-report.html, *-trivy-report.xml", allowEmptyArchive: false
+            }
+        }
 
+        stage('Publish HTML Report') {
+            steps {
+                // Publish the HTML report
+                publishHTML(target: [
+                    allowMissing: false,
+                    keepAll: true,
+                    reportDir: '.',
+                    reportFiles: '*-trivy-report.html',
+                    reportName: 'Trivy Vulnerability Report'
+                ])
+            }
+        }
 
+        stage('Publish XML Report') {
+            steps {
+                // Publish XML reports using Warnings Next Generation or JUnit Plugin
+                recordIssues tools: [junitParser(pattern: "*-trivy-report.xml")]
+            }
+        }
 
+        stage('Build and Push Docker Image') {
+            steps {
+                dir('Spring') {
+                    // Build the Docker image using Docker Compose
+                    sh 'docker compose up -d --build'
+
+                    // Push the Docker image to Docker Hub
+                    script {
+                        withCredentials([string(credentialsId: 'jenkins-docker-auth', variable: 'DOCKERHUB_TOKEN')]) {
+                            // Tag the Docker image
+                            sh 'docker tag spring-springapp:latest arijhabbechi/spring-springapp:latest'
+                            
+                            // Push the Docker image to Docker Hub
+                            sh 'docker push arijhabbechi/spring-springapp:latest'
+                        }
+                    }
+                }
+            }
+        }
     }
 
     post {
         always {
             publishChecks name: 'Tests', summary: 'Test results', detailsURL: env.BUILD_URL
-
         }
     }
 }
