@@ -54,7 +54,7 @@ pipeline {
                                 mvn clean verify sonar:sonar \
                                 -Dsonar.projectKey=SpringBootApp \
                                 -Dsonar.projectName='SpringBootApp' \
-                                -Dsonar.host.url=http://192.168.116.134:9000 \
+                                -Dsonar.host.url=http://192.168.116.137:9000 \
                                 -Dsonar.token=${SONAR_TOKEN}
                             """
                         }
