@@ -93,7 +93,7 @@ pipeline {
             steps {
                 script {
                     // Run the custom Trivy scan script
-                    sh './trivy-scan.sh'
+                    sh './trivy-docker-scan.sh'
                 }
             }
         }
