@@ -16,7 +16,7 @@ for IMAGE in $IMAGES; do
         -v $(pwd):/root/.cache/ \
         -v $(pwd)/html.tpl:/html.tpl \
         -v $(pwd):/output \
-        aquasec/trivy:0.37.3 image --timeout 15m --format template --template "@/html.tpl" -o /output/${IMAGE}-trivy-report.html $IMAGE
+        aquasec/trivy:0.37.3 image --timeout 20m --format template --template "@/html.tpl" -o /output/${IMAGE}-trivy-report.html $IMAGE
 
     echo "Trivy scan for $IMAGE completed."
 done

@@ -101,7 +101,7 @@ pipeline {
         stage('Archive Reports') {
             steps {
                 // Archive the reports in Jenkins
-                archiveArtifacts artifacts: "*-trivy-report.html, *-trivy-report.xml", allowEmptyArchive: false
+                archiveArtifacts artifacts: "*-trivy-report.html", allowEmptyArchive: false
             }
         }
 
