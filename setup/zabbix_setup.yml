@@ -1,24 +1,70 @@
 ---
-- hosts: minikube
-  become: false  # No root privileges required
-  vars:
-    zabbix_version: "6.0"
-
+- name: Zabbix Environment Setup
+  hosts: minikube
+  become: yes
   tasks:
-    - name: Deploy Zabbix server using Helm
-      shell: |
-        kubectl create namespace zabbix
-        helm repo add zabbix https://zabbix.github.io/zabbix-helm/
-        helm repo update
-        helm install zabbix-server zabbix/zabbix --namespace zabbix --set zabbixServer.image.tag={{ zabbix_version }}
+    - name: Create Docker network for Zabbix components
+      community.docker.docker_network:
+        name: zabbix-net
+        subnet: 172.20.0.0/16
+        ip_range: 172.20.240.0/20
 
-    - name: Wait for Zabbix Server deployment to complete
-      shell: "kubectl wait --namespace zabbix --for=condition=available --timeout=600s deployment/zabbix-server"
+    - name: Start MySQL server instance
+      community.docker.docker_container:
+        name: mysql-server
+        image: mysql:8.0-oracle-alpine-trunk
+        state: started
+        restart_policy: unless-stopped
+        networks:
+          - name: zabbix-net
+        env:
+          MYSQL_DATABASE: "zabbix"
+          MYSQL_USER: "zabbix"
+          MYSQL_PASSWORD: "zabbix_pwd"
+          MYSQL_ROOT_PASSWORD: "root_pwd"
+        command: "--character-set-server=utf8 --collation-server=utf8_bin --default-authentication-plugin=mysql_native_password"
 
-    - name: Display Zabbix web UI access information
-      shell: minikube service zabbix-server --url
-      register: zabbix_url_output
+    - name: Start Zabbix Java gateway instance
+      community.docker.docker_container:
+        name: zabbix-java-gateway
+        image: zabbix/zabbix-java-gateway:alpine-trunk
+        state: started
+        restart_policy: unless-stopped
+        networks:
+          - name: zabbix-net
 
-    - name: Show Zabbix access URL
-      debug:
-        msg: "{{ zabbix_url_output.stdout }}"
+    - name: Start Zabbix server instance
+      community.docker.docker_container:
+        name: zabbix-server-mysql
+        image: zabbix/zabbix-server-mysql:alpine-trunk
+        state: started
+        restart_policy: unless-stopped
+        networks:
+          - name: zabbix-net
+        ports:
+          - "10051:10051"
+        env:
+          DB_SERVER_HOST: "mysql-server"
+          MYSQL_DATABASE: "zabbix"
+          MYSQL_USER: "zabbix"
+          MYSQL_PASSWORD: "zabbix_pwd"
+          MYSQL_ROOT_PASSWORD: "root_pwd"
+          ZBX_JAVAGATEWAY: "zabbix-java-gateway"
+
+    - name: Start Zabbix web interface instance
+      community.docker.docker_container:
+        name: zabbix-web-nginx-mysql
+        image: zabbix/zabbix-web-nginx-mysql:alpine-trunk
+        state: started
+        restart_policy: unless-stopped
+        networks:
+          - name: zabbix-net
+        ports:
+          - "80:8080"
+        env:
+          ZBX_SERVER_HOST: "zabbix-server-mysql"
+          DB_SERVER_HOST: "mysql-server"
+          MYSQL_DATABASE: "zabbix"
+          MYSQL_USER: "zabbix"
+          MYSQL_PASSWORD: "zabbix_pwd"
+          MYSQL_ROOT_PASSWORD: "root_pwd"
