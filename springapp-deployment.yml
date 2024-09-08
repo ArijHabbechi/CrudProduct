@@ -20,6 +20,8 @@ spec:
         envFrom:
         - configMapRef:
             name: springapp-config
+        securityContext:
+          runAsNonRoot: true
 ---
 apiVersion: v1
 kind: Service
