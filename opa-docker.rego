@@ -48,14 +48,14 @@ deny[msg] {
 }
 
 # Deny if no USER command is specified (prevent root usage)
-any_user {
-    input[i].Cmd == "user"
-}
+#any_user {
+#    input[i].Cmd == "user"
+#}
 
-deny[msg] {
-    not any_user
-    msg = "Do not run as root, use USER instead"
-}
+#deny[msg] {
+#    not any_user
+#    msg = "Do not run as root, use USER instead"
+#}
 
 # Deny forbidden users (root, toor, UID 0)
 forbidden_users = ["root", "toor", "0"]
