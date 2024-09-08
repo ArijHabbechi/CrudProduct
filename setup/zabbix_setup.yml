@@ -6,8 +6,11 @@
     - name: Create Docker network for Zabbix components
       community.docker.docker_network:
         name: zabbix-net
-        subnet: 172.20.0.0/16
-        ip_range: 172.20.240.0/20
+        driver: bridge
+        ipam_config:
+          - subnet: 172.20.0.0/16
+            ip_range: 172.20.240.0/20
+        
 
     - name: Start MySQL server instance
       community.docker.docker_container:
