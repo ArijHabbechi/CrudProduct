@@ -1,24 +1,64 @@
 ---
-- hosts: minikube
-  become: false  # No root privileges required
+- name: Setup Zabbix Server using Docker and MySQL
+  hosts: minikube
+  become: true
+  collections:
+    - community.zabbix
   vars:
-    zabbix_version: "6.0"
+    # Zabbix variables
+    zbx_version: "alpine-6.0-latest"
+    zbx_server_port: "10051"
+    mysql_port: "3307"
+    mysql_host: "192.168.116.136"  
+
+  roles:
+    - role: geerlingguy.mysql        
+      vars:
+        mysql_root_password: "root_pass"
+        mysql_databases:
+          - name: zabbix
+        mysql_users:
+          - name: zabbix
+            host: "%"
+            password: "zabbix"
+            priv: "zabbix.*:ALL"
+        mysql_port: "3307"
 
   tasks:
-    - name: Deploy Zabbix server using Helm
-      shell: |
-        kubectl create namespace zabbix
-        helm repo add zabbix https://zabbix.github.io/zabbix-helm/
-        helm repo update
-        helm install zabbix-server zabbix/zabbix --namespace zabbix --set zabbixServer.image.tag={{ zabbix_version }}
+    - name: Pull Zabbix server Docker image
+      ansible.builtin.docker_image:
+        name: "zabbix/zabbix-server-mysql:{{ zbx_version }}"
+        source: pull
 
-    - name: Wait for Zabbix Server deployment to complete
-      shell: "kubectl wait --namespace zabbix --for=condition=available --timeout=600s deployment/zabbix-server"
+    - name: Run Zabbix server container
+      ansible.builtin.docker_container:
+        name: zabbix-server-mysql
+        image: "zabbix/zabbix-server-mysql:{{ zbx_version }}"
+        state: started
+        restart_policy: always
+        env:
+          DB_SERVER_HOST: "192.168.116.136"   
+          DB_SERVER_PORT: "{{ mysql_port }}"
+          MYSQL_DATABASE: "zabbix"
+          MYSQL_USER: "zabbix"
+          MYSQL_PASSWORD: "zabbix"
+          MYSQL_ROOT_PASSWORD: "{{ mysql_root_password }}"
+        ports:
+          - "{{ zbx_server_port }}:10051"
 
-    - name: Display Zabbix web UI access information
-      shell: minikube service zabbix-server --url
-      register: zabbix_url_output
+    - name: Wait for Zabbix to be ready
+      uri:
+        url: "http://{{ mysql_host }}:{{ zbx_server_port }}/zabbix/api_jsonrpc.php"
+        method: GET
+        return_content: yes
+      register: zabbix_api_status
+      until: zabbix_api_status.status == 200
+      retries: 10
+      delay: 15
 
-    - name: Show Zabbix access URL
-      debug:
-        msg: "{{ zabbix_url_output.stdout }}"
+    - name: Display Zabbix access information
+      ansible.builtin.debug:
+        msg: |
+          Zabbix server setup is complete!
+          Zabbix server is running and connected to MySQL on port {{ mysql_port }}.
+
