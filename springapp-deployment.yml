@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: springapp
+  annotations:
+    container.seccomp.security.alpha.kubernetes.io/pod: "runtime/default"  # Seccomp profile
 spec:
   selector:
     matchLabels:
@@ -12,6 +14,7 @@ spec:
       labels:
         app: springapp
     spec:
+      serviceAccountName: default  # Use least-privileged service account or create a specific one
       containers:
       - name: springapp
         image: arijhabbechi/spring-springapp:latest
@@ -21,7 +24,19 @@ spec:
         - configMapRef:
             name: springapp-config
         securityContext:
-          runAsNonRoot: true
+          runAsNonRoot: true  # Run as non-root user
+          runAsUser: 10001  # High UID for the container user
+          readOnlyRootFilesystem: true  # Read-only root filesystem
+          capabilities:
+            drop:
+              - ALL  # Drop all unnecessary capabilities
+        resources:  # Resource requests and limits
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
 ---
 apiVersion: v1
 kind: Service
