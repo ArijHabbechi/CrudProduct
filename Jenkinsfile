@@ -98,6 +98,15 @@ pipeline {
             }
         }
 
+        stage('Opa Scan') {
+            steps {
+                script {
+                    
+                    sh 'docker run --rm -v $(pwd):/project openpolicyagent/conftest test --policy opa-docker.rego Spring/Dockerfile'
+                }
+            }
+        }
+
         stage('Archive Reports') {
             steps {
                 // Archive the reports in Jenkins
@@ -118,12 +127,6 @@ pipeline {
             }
         }
 
-        stage('Publish XML Report') {
-            steps {
-                // Publish XML reports using Warnings Next Generation or JUnit Plugin
-                recordIssues tools: [junitParser(pattern: "*-trivy-report.xml")]
-            }
-        }
 
         stage('Build and Push Docker Image') {
             steps {

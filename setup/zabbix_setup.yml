@@ -1,64 +1,70 @@
 ---
-- name: Setup Zabbix Server using Docker and MySQL
+- name: Zabbix Environment Setup
   hosts: minikube
-  become: true
-  collections:
-    - community.zabbix
-  vars:
-    # Zabbix variables
-    zbx_version: "alpine-6.0-latest"
-    zbx_server_port: "10051"
-    mysql_port: "3307"
-    mysql_host: "192.168.116.136"  
-
-  roles:
-    - role: geerlingguy.mysql        
-      vars:
-        mysql_root_password: "root_pass"
-        mysql_databases:
-          - name: zabbix
-        mysql_users:
-          - name: zabbix
-            host: "%"
-            password: "zabbix"
-            priv: "zabbix.*:ALL"
-        mysql_port: "3307"
-
+  become: yes
   tasks:
-    - name: Pull Zabbix server Docker image
-      ansible.builtin.docker_image:
-        name: "zabbix/zabbix-server-mysql:{{ zbx_version }}"
-        source: pull
+    - name: Create Docker network for Zabbix components
+      community.docker.docker_network:
+        name: zabbix-net
+        subnet: 172.20.0.0/16
+        ip_range: 172.20.240.0/20
 
-    - name: Run Zabbix server container
-      ansible.builtin.docker_container:
-        name: zabbix-server-mysql
-        image: "zabbix/zabbix-server-mysql:{{ zbx_version }}"
+    - name: Start MySQL server instance
+      community.docker.docker_container:
+        name: mysql-server
+        image: mysql:8.0-oracle-alpine-trunk
         state: started
-        restart_policy: always
+        restart_policy: unless-stopped
+        networks:
+          - name: zabbix-net
         env:
-          DB_SERVER_HOST: "192.168.116.136"   
-          DB_SERVER_PORT: "{{ mysql_port }}"
           MYSQL_DATABASE: "zabbix"
           MYSQL_USER: "zabbix"
-          MYSQL_PASSWORD: "zabbix"
-          MYSQL_ROOT_PASSWORD: "{{ mysql_root_password }}"
+          MYSQL_PASSWORD: "zabbix_pwd"
+          MYSQL_ROOT_PASSWORD: "root_pwd"
+        command: "--character-set-server=utf8 --collation-server=utf8_bin --default-authentication-plugin=mysql_native_password"
+
+    - name: Start Zabbix Java gateway instance
+      community.docker.docker_container:
+        name: zabbix-java-gateway
+        image: zabbix/zabbix-java-gateway:alpine-trunk
+        state: started
+        restart_policy: unless-stopped
+        networks:
+          - name: zabbix-net
+
+    - name: Start Zabbix server instance
+      community.docker.docker_container:
+        name: zabbix-server-mysql
+        image: zabbix/zabbix-server-mysql:alpine-trunk
+        state: started
+        restart_policy: unless-stopped
+        networks:
+          - name: zabbix-net
         ports:
-          - "{{ zbx_server_port }}:10051"
+          - "10051:10051"
+        env:
+          DB_SERVER_HOST: "mysql-server"
+          MYSQL_DATABASE: "zabbix"
+          MYSQL_USER: "zabbix"
+          MYSQL_PASSWORD: "zabbix_pwd"
+          MYSQL_ROOT_PASSWORD: "root_pwd"
+          ZBX_JAVAGATEWAY: "zabbix-java-gateway"
 
-    - name: Wait for Zabbix to be ready
-      uri:
-        url: "http://{{ mysql_host }}:{{ zbx_server_port }}/zabbix/api_jsonrpc.php"
-        method: GET
-        return_content: yes
-      register: zabbix_api_status
-      until: zabbix_api_status.status == 200
-      retries: 10
-      delay: 15
-
-    - name: Display Zabbix access information
-      ansible.builtin.debug:
-        msg: |
-          Zabbix server setup is complete!
-          Zabbix server is running and connected to MySQL on port {{ mysql_port }}.
-
+    - name: Start Zabbix web interface instance
+      community.docker.docker_container:
+        name: zabbix-web-nginx-mysql
+        image: zabbix/zabbix-web-nginx-mysql:alpine-trunk
+        state: started
+        restart_policy: unless-stopped
+        networks:
+          - name: zabbix-net
+        ports:
+          - "80:8080"
+        env:
+          ZBX_SERVER_HOST: "zabbix-server-mysql"
+          DB_SERVER_HOST: "mysql-server"
+          MYSQL_DATABASE: "zabbix"
+          MYSQL_USER: "zabbix"
+          MYSQL_PASSWORD: "zabbix_pwd"
+          MYSQL_ROOT_PASSWORD: "root_pwd"
