@@ -16,11 +16,11 @@ echo "$scan_result"
 
 echo "Scan Score: $scan_score"
 
-if [[ "$scan_score" -ge 5 ]]; then
+if [[ "$scan_score" -ge 10 ]]; then
     echo "Score is $scan_score"
     echo "Kubesec Scan Message: $scan_message"
 else
-    echo "Score is $scan_score, which is less than or equal to 5."
+    echo "Score is $scan_score, which is less than or equal to 10."
     echo "Scanning Kubernetes Resource has Failed"
     exit 1
 fi
