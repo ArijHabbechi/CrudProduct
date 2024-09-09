@@ -26,7 +26,6 @@ spec:
         securityContext:
           runAsNonRoot: true  # Run as non-root user
           runAsUser: 10001  # High UID for the container user
-          readOnlyRootFilesystem: true  # Read-only root filesystem
           capabilities:
             drop:
               - ALL  # Drop all unnecessary capabilities
