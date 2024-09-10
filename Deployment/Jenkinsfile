@@ -1,0 +1,28 @@
+pipeline {
+    agent { label 'minikube-agent' }
+
+    stages {
+        
+        stage('Security Scans') {
+            parallel {
+                stage('OPA Vulnerability Scan') {
+                    steps {
+                        sh 'docker run --rm -v $(pwd):/project openpolicyagent/conftest test --policy OPA-k8s.rego springapp-deployment.yml'
+                    }
+                }
+                stage('Kubesec Scan') {
+                    steps {
+                        sh './kubesec-scan.sh'
+                    }
+                }
+            }
+        }
+        
+        stage('Deployment') {
+            steps {
+                sh './deploy.sh'
+            }
+        }
+        
+    }
+}
