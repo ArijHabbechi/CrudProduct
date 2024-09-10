@@ -5,7 +5,7 @@ chmod 777 $(pwd)
 
 # Run the OWASP ZAP Docker container to scan the specified API
 docker run -u root -v $(pwd):/zap/wrk/:rw -t zaproxy/zap-stable zap-api-scan.py \
-    -t http://192.168.49.2:$NODE_PORT/SpringMVC/v3/api-docs \
+    -t http://192.168.116.137:8089/SpringMVC/v3/api-docs \
     -f openapi \
     -r zap_report.html
 
