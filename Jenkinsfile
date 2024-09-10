@@ -128,7 +128,7 @@ pipeline {
                     script {
                         withCredentials([string(credentialsId: 'jenkins-docker-auth', variable: 'DOCKERHUB_TOKEN')]) {
                             // Tag the Docker image
-                            sh "docker tag  ${DOCKER_IMAGE}:${BUILD_NUMBER} "
+                            sh "docker tag  ${DOCKER_IMAGE} arijhabbechi/spring-springapp:${BUILD_NUMBER} "
                             // Push the Docker image to Docker Hub
                             sh "docker push ${DOCKER_IMAGE}"
                         }
