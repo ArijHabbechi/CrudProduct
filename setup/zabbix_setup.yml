@@ -9,13 +9,12 @@
         driver: bridge
         ipam_config:
           - subnet: 172.20.0.0/16
-            ip_range: 172.20.240.0/20
         
 
     - name: Start MySQL server instance
       community.docker.docker_container:
         name: mysql-server
-        image: mysql:8.0-oracle-alpine-trunk
+        image: mysql:8.0-oracle
         state: started
         restart_policy: unless-stopped
         networks:
