@@ -7,7 +7,7 @@ pipeline {
         MYSQL_CONTAINER_NAME = 'mysql-test'
         MYSQL_ROOT_PASSWORD = 'rootpassword'
         MYSQL_DATABASE = 'mydatabase'
-                MYSQL_USER = 'jenkins'
+        MYSQL_USER = 'jenkins'
         MYSQL_PASSWORD = 'rootpassword'
     }
 
@@ -128,7 +128,7 @@ pipeline {
                     script {
                         withCredentials([string(credentialsId: 'jenkins-docker-auth', variable: 'DOCKERHUB_TOKEN')]) {
                             // Tag the Docker image
-                            sh "docker tag spring-springapp:latest ${DOCKER_IMAGE}:${BUILD_NUMBER} "
+                            sh "docker tag  ${DOCKER_IMAGE}:${BUILD_NUMBER} "
                             // Push the Docker image to Docker Hub
                             sh "docker push ${DOCKER_IMAGE}"
                         }
