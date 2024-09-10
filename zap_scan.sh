@@ -9,7 +9,6 @@ docker run -u root -v $(pwd):/zap/wrk/:rw -t zaproxy/zap-stable zap-api-scan.py 
     -f openapi \
     -r zap_report.html
 
-# Capture the exit code of the last command
 exit_code=$?
 
 # Output the exit code
