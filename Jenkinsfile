@@ -1,12 +1,13 @@
 pipeline {
     agent any
+
     environment {
         SONAR_HOST_URL = 'http://192.168.116.137:9000'
         DOCKER_IMAGE = 'arijhabbechi/spring-springapp:latest'
         MYSQL_CONTAINER_NAME = 'mysql-test'
         MYSQL_ROOT_PASSWORD = 'rootpassword'
         MYSQL_DATABASE = 'mydatabase'
-        MYSQL_USER = 'jenkins'
+                MYSQL_USER = 'jenkins'
         MYSQL_PASSWORD = 'rootpassword'
     }
 
@@ -39,15 +40,15 @@ pipeline {
             }
         }
 
-        stage('Unit Tests') {
+        stage('Test Maven – JUnit') {
             steps {
                 dir('Spring') {
-                    sh "mvn test"  // Runs Surefire tests (unit tests)
+                    sh "mvn test"  
                 }
             }
             post {
                 always {
-                    junit 'Spring/target/surefire-reports/*.xml' 
+                    junit 'Spring/target/surefire-reports/*.xml'
                 }
             }
         }
@@ -88,7 +89,7 @@ pipeline {
             }
         }
 
-        stage('Vulnerability Scans ') {
+        stage('Security Scans') {
             parallel {
                 stage('Run Trivy Scan') {
                     steps {
@@ -104,15 +105,6 @@ pipeline {
                         script {
                             echo 'Running OPA Scan'
                             sh 'docker run --rm -v $(pwd):/project openpolicyagent/conftest test --policy opa-docker.rego Spring/Dockerfile'
-                        }
-                    }
-                }
-
-                stage('OWASP ZAP test - DAST') {
-                    steps {
-                        script {
-                            echo 'Running OWASP ZAP Scan'
-                            sh './zap_scan.sh'
                         }
                     }
                 }
@@ -144,13 +136,21 @@ pipeline {
                 }
             }
         }
+
+        stage('OWASP ZAP test - DAST') {
+            steps {
+                script {
+                    sh './zap_scan.sh'
+                }
+            }
+        }
     }
 
     post {
         always {
             echo 'Archiving and publishing reports'
 
-            // Publish Trivy, OPA, and OWASP ZAP reports
+            // Publish Trivy, and OWASP ZAP reports
             archiveArtifacts artifacts: "*-trivy-report.html", allowEmptyArchive: false
             archiveArtifacts artifacts: 'zap_report.html', allowEmptyArchive: false
 
@@ -181,4 +181,9 @@ pipeline {
             echo 'Pipeline failed. Check the logs for more details.'
         }
     }
+
 }
+
+
+
+       
