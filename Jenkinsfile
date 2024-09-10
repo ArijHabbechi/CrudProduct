@@ -67,16 +67,34 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Vulnerability tests') {
             steps {
-                dir('Spring') { 
+                dir('Spring') {
                     sh "mvn dependency-check:check"
                 }
             }
             post {
                 always {
                     dependencyCheckPublisher pattern: 'Spring/target/dependency-check-report.xml'
+                }
+            }
+        }
+
+        stage('Run Trivy Scan') {
+            steps {
+                script {
+                    echo 'Running Trivy Scan'
+                    sh './trivy-docker-scan.sh'
+                }
+            }
+        }
+
+        stage('Opa Scan') {
+            steps {
+                script {
+                    echo 'Running OPA Scan'
+                    sh 'docker run --rm -v $(pwd):/project openpolicyagent/conftest test --policy opa-docker.rego Spring/Dockerfile'
                 }
             }
         }
@@ -89,57 +107,17 @@ pipeline {
             }
         }
 
-        stage('Run Trivy Scan') {
-            steps {
-                script {
-                    // Run the custom Trivy scan script
-                    sh './trivy-docker-scan.sh'
-                }
-            }
-        }
-
-        stage('Opa Scan') {
-            steps {
-                script {
-                    
-                    sh 'docker run --rm -v $(pwd):/project openpolicyagent/conftest test --policy opa-docker.rego Spring/Dockerfile'
-                }
-            }
-        }
-
-        stage('Archive Reports') {
-            steps {
-                // Archive the reports in Jenkins
-                archiveArtifacts artifacts: "*-trivy-report.html", allowEmptyArchive: false
-            }
-        }
-
-        stage('Publish HTML Report') {
-            steps {
-                // Publish the HTML report
-                publishHTML(target: [
-                    allowMissing: false,
-                    keepAll: true,
-                    reportDir: '.',
-                    reportFiles: '*-trivy-report.html',
-                    reportName: 'Trivy Vulnerability Report'
-                ])
-            }
-        }
-
-
+        // Build Docker image after tests
         stage('Build and Push Docker Image') {
             steps {
                 dir('Spring') {
-                    // Build the Docker image using Docker Compose
+                    echo 'Building and Running Docker Image'
                     sh 'docker compose up -d --build'
 
-                    // Push the Docker image to Docker Hub
                     script {
                         withCredentials([string(credentialsId: 'jenkins-docker-auth', variable: 'DOCKERHUB_TOKEN')]) {
                             // Tag the Docker image
                             sh 'docker tag spring-springapp:latest arijhabbechi/spring-springapp:latest'
-                            
                             // Push the Docker image to Docker Hub
                             sh 'docker push arijhabbechi/spring-springapp:latest'
                         }
@@ -147,11 +125,50 @@ pipeline {
                 }
             }
         }
+
+        stage('OWASP ZAP test - DAST') {
+            steps {
+                script {
+                    echo 'Running OWASP ZAP Scan'
+                    sh './zap_scan.sh'
+                }
+            }
+        }
     }
 
     post {
         always {
+            echo 'Archiving and publishing reports'
+
+            // Publish Trivy, OPA, and OWASP ZAP reports
+            archiveArtifacts artifacts: "*-trivy-report.html", allowEmptyArchive: false
+            archiveArtifacts artifacts: 'zap_report.html', allowEmptyArchive: false
+
+            publishHTML(target: [
+                allowMissing: false,
+                keepAll: true,
+                reportDir: '.',
+                reportFiles: '*-trivy-report.html',
+                reportName: 'Trivy Vulnerability Report'
+            ])
+
+            publishHTML(target: [
+                allowMissing: false,
+                keepAll: true,
+                reportDir: '.',
+                reportFiles: 'zap_report.html',
+                reportName: 'OWASP ZAP Report'
+            ])
+
+            // Publish status checks
             publishChecks name: 'Tests', summary: 'Test results', detailsURL: env.BUILD_URL
+
+            // Clean up the workspace
+            cleanWs()
+        }
+
+        failure {
+            echo 'Pipeline failed. Check the logs for more details.'
         }
     }
 }
