@@ -1,10 +1,5 @@
 pipeline {
     agent any
-
-    options {
-        cache(path: '.m2/repository', key: 'maven-dependencies')
-    }
-
     environment {
         SONAR_HOST_URL = 'http://192.168.116.137:9000'
         DOCKER_IMAGE = 'arijhabbechi/spring-springapp:latest'
